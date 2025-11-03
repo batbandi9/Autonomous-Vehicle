@@ -10,12 +10,6 @@ This package provides tools for training autonomous driving agents using:
 
 __version__ = "0.1.0"
 
-from autonomous_vehicle.environments import (
-    ParkingEnv,
-    LaneChangeEnv,
-    HighwayEnv,
-)
-
 __all__ = [
     "ParkingEnv",
     "LaneChangeEnv",
