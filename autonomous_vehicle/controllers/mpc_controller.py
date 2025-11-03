@@ -7,7 +7,6 @@ This module implements MPC for trajectory tracking and control stability.
 import numpy as np
 import cvxpy as cp
 from typing import Dict, Any, Optional, List, Tuple
-from scipy.linalg import block_diag
 
 
 class MPCController:
