@@ -1,0 +1,19 @@
+# Core dependencies for autonomous vehicle learning
+gymnasium>=0.29.0
+highway-env>=1.8.0
+stable-baselines3>=2.0.0
+numpy>=1.24.0
+matplotlib>=3.7.0
+tensorboard>=2.13.0
+
+# MPC and control dependencies
+cvxpy>=1.4.0
+scipy>=1.11.0
+
+# Multi-agent support
+pettingzoo>=1.24.0
+
+# Development and testing
+pytest>=7.4.0
+black>=23.0.0
+flake8>=6.0.0
