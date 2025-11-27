@@ -32,8 +32,9 @@ class ParkingPPOEnv(gym.Env):
         
         # Structured Layout
         self.parking_spots = [
-            (200.0, 200.0, -3*np.pi/4),
-            #(800.0, 200.0, np.pi/4), 
+            (300.0, 300.0, 2*np.pi/4), 
+            (800.0, 200.0, 3*np.pi/4),
+            (200.0, 200.0, np.pi/4), 
             #(300.0, 500.0, -3*np.pi/4), 
             #(900.0, 500.0, -np.pi/4),
         ]
@@ -72,7 +73,7 @@ class ParkingPPOEnv(gym.Env):
         self.reward_p_norm = 1 # first one linear
         self.success_cost_threshold = 4e-4
 
-        # Pygame rendering
+        # Pygame renderin4
         self.screen = None
         self.clock = None
 
@@ -88,6 +89,9 @@ class ParkingPPOEnv(gym.Env):
             -1, # delta_x normalized
             -1, # delta_y normalized
             -1, # delta_angle normalized
+            -1,
+            -1,
+            -1,
             -1. # delta velocity normalized
         ], dtype=np.float32)
         
@@ -95,6 +99,9 @@ class ParkingPPOEnv(gym.Env):
             1, # delta_x normalized
             1, # delta_y normalized
             1, # delta_angle normalized
+            1,
+            1,
+            1,
             1. # delta velocity normalized
         ], dtype=np.float32)
         
@@ -122,9 +129,7 @@ class ParkingPPOEnv(gym.Env):
         self.car_speed = 0.0 
         self.step_count = 0
 
-        self.initial_delta_x = self.car_x - self.target_x
         self.initial_delta_x = self.screen_width
-        self.initial_delta_y = self.car_y - self.target_y
         self.initial_delta_y = self.screen_height
         
         # This gets the flat observation vector
@@ -189,7 +194,7 @@ class ParkingPPOEnv(gym.Env):
             print(f"Episode ended at step {self.step_count}: "
                   f"pos=({self.car_x:.1f},{self.car_y:.1f}), "
                   f"crashed={self._has_crashed()}, "
-                  # f"hit_obs={self._hit_obstacle()}, " # Uncomment if you add obstacles
+                  #f"hit_obs={self._hit_obstacle()}, " # Uncomment if you add obstacles
                   f"success={info['is_success']}, "
                   f"proximity_cost={proximity_cost:.4f}, "
                   f"steering={steering_action:.2f}, "
@@ -207,31 +212,46 @@ class ParkingPPOEnv(gym.Env):
     # PPO Helper Functions
 
     def _get_obs(self):
+        
+        # --- 1. Position error in global frame ---
         dx = self.target_x - self.car_x
         dy = self.target_y - self.car_y
 
-        # local frame
+        # --- 2. Transform to local frame (car-centric coordinates) ---
         dx_local =  dx * np.cos(self.car_angle) + dy * np.sin(self.car_angle)
         dy_local = -dx * np.sin(self.car_angle) + dy * np.cos(self.car_angle)
 
-        # normalize by screen
+        # Normalize by world/screen dimensions
         dx_local /= self.screen_width
         dy_local /= self.screen_height
 
-        # angle diff
-        angle_to_goal = np.arctan2(dy, dx)
-        angle_diff = angle_to_goal - self.car_angle
-        angle_diff = ((angle_diff + np.pi) % (2*np.pi)) - np.pi
-        angle_diff /= np.pi   # [-1,1]
+        # --- 3. Angle toward target position (navigation) ---
+        angle_to_target = np.arctan2(dy, dx) - self.car_angle
+        angle_to_target = (angle_to_target + np.pi) % (2*np.pi) - np.pi
 
+        # Wrap-safe representation
+        cos_target = np.cos(angle_to_target)
+        sin_target = np.sin(angle_to_target)
+
+        # --- 4. Final desired orientation error (parking) ---
+        theta_final = self.target_angle              # desired parking angle
+        delta_theta_final = theta_final - self.car_angle
+        delta_theta_final = (delta_theta_final + np.pi) % (2*np.pi) - np.pi
+
+        cos_final = np.cos(delta_theta_final)
+        sin_final = np.sin(delta_theta_final)
+
+        # --- 5. Speed normalization ---
         speed_norm = self.car_speed / self.max_speed
 
+        # --- Final observation vector ---
         return np.array([
-            dx_local,
-            dy_local,
-            angle_diff,
-            speed_norm,
+            dx_local, dy_local,        # relative target position
+            cos_target, sin_target,    # direction for navigation
+            cos_final, sin_final,      # final orientation alignment
+            speed_norm,                # normalized speed
         ], dtype=np.float32)
+
 
 
     def _is_success(self) -> bool:
@@ -250,7 +270,12 @@ class ParkingPPOEnv(gym.Env):
         
         # This returns the scaled negative cost
         # reward = (1 - proximity_cost)**5
-        reward = 1-np.cbrt(proximity_cost)
+        # reward = 1-proximity_cost
+        reward = 1 - np.cbrt(proximity_cost)
+        success = self._is_success()
+       # if self.car_speed <= 1e-2 and not success:
+       #     reward -= 0.5 # small penalty for being stationary
+
         return reward
 
  
@@ -275,7 +300,8 @@ class ParkingPPOEnv(gym.Env):
         
         # This wraps the angle to [-π, π]
         angle_diff = ((angle_diff + np.pi) % (2*np.pi)) - np.pi
-        error_angle = 1 - np.cos(angle_diff)
+        # error_angle = 1 - np.cos(angle_diff)
+        error_angle = abs(angle_diff)/np.pi
 
         # Velocity error
         error_velocity = abs(self.car_speed) / (self.max_speed + 1e-6)  # Normalize to [0, 1]

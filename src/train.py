@@ -9,9 +9,9 @@ from gymnasium.wrappers import RecordEpisodeStatistics
 from env import ParkingPPOEnv  # Your PPO-compatible environment
 
 # Training parameters
-LOG_DIR = "ppo_logs19/"  # TensorBoard logs folder
+LOG_DIR = "ppo_logs41/"  # TensorBoard logs folder
 N_ENVS = 8  # Number of parallel environments
-TOTAL_TIMESTEPS = 5_000_000  # 3 million steps
+TOTAL_TIMESTEPS = 4_000_000  # 4 million steps
 
 # Helper function to create environments
 def make_env(rank):

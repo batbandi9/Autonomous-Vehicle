@@ -13,7 +13,7 @@ import os # <-- Added the import os here
 from env import ParkingPPOEnv # 
 
 # Path to the saved model
-MODEL_PATH = "ppo_logs19/ppo_parking_final.zip"
+MODEL_PATH = "ppo_logs41/ppo_parking_final.zip"
 #MODEL_PATH = "ppo_curriculum_logs_5/final_extended_model.zip"
 
 def test_model():
